@@ -7,3 +7,6 @@
 [submodule "libs/cores"]
 	path = libs/cores
 	url = https://github.com/PaulStoffregen/cores.git
+[submodule "libs/Arduino-CMake-Toolchain"]
+	path = libs/Arduino-CMake-Toolchain
+	url = https://github.com/a9183756-gh/Arduino-CMake-Toolchain.git

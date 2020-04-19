@@ -71,8 +71,8 @@ function(add_firmware_targets TARGET_NAME)
     )
 
     # See https://github.com/Koromix/ty
-    find_file(TY_EXECUTABLE tyc 
-        PATHS "/usr/local/bin" 
+    find_file(TY_EXECUTABLE tycmd
+        PATHS "/usr/local/bin"
         DOC "Path to the 'tyc' executable that can upload programs to the Teensy")
 
     if(TY_EXECUTABLE)

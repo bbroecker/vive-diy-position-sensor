@@ -4,6 +4,7 @@
 #include "primitives/circular_buffer.h"
 #include "primitives/static_registration.h"
 #include "messages.h"
+#include "input.h"
 
 // We can use different Teensy hardware features to measure pulse timing, each with different pros and cons.
 // Look into each input type's header for details.
@@ -27,7 +28,7 @@ struct InputDef {
 
 
 // Base class for input nodes. They all produce Pulse-s.
-class InputNode 
+class InputNode
     : public WorkerNode
     , public Producer<Pulse> {
 public:

@@ -21,10 +21,10 @@ public:
 };
 
 
-// Produce a value of type T. Template parameter out_idx can be used if a class wants to produce 
+// Produce a value of type T. Template parameter out_idx can be used if a class wants to produce
 // value of the same type to different output channels. In that case, you'll need to provide full signature, i.e.
 // Producer<ValueType, 1>::produce(ValueType());
-// Also, full signature is usually required if multiple types can be produced, unless "using Producer<T>::produce;" 
+// Also, full signature is usually required if multiple types can be produced, unless "using Producer<T>::produce;"
 // is given for each type.
 template<typename T, int out_idx = 0>
 class Producer {

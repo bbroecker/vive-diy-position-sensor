@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 enum TimeUnit {
-    usec = 3,            // This can be increased to get better time resolution.
+    usec = 4,            // This can be increased to get better time resolution.
     msec = usec * 1000,
     ms = msec,
     sec = msec * 1000,
@@ -42,7 +42,7 @@ public:
     inline TimeDelta &operator-=(const TimeDelta& delta) { time_delta_ -= delta.time_delta_; return *this; }
     inline TimeDelta &operator*=(int val) { time_delta_ *= val; return *this; }
     inline TimeDelta &operator/=(int val) { time_delta_ /= val; return *this; }
-    
+
     // Helper functions
     inline bool within_range_of(const TimeDelta& other, const TimeDelta& half_range) {
         auto delta = time_delta_ - other.time_delta_;
@@ -55,7 +55,7 @@ private:
     friend class Timestamp;
 };
 
-// Timestamp is conceptually a point in time with a given resolution, mod 2^32. 
+// Timestamp is conceptually a point in time with a given resolution, mod 2^32.
 // The class handles wrapping over uint32_t to add safety.
 class Timestamp {
 public:
@@ -64,7 +64,7 @@ public:
     constexpr Timestamp(const Timestamp& other) = default;
     constexpr Timestamp& operator=(const Timestamp& other) = default;
 
-    // Get adjusted value of this timestamp in provided time unit. 
+    // Get adjusted value of this timestamp in provided time unit.
     // We try to "extend" the value outside of regular period of timestamp using current time in millis.
     // TODO: Add 64bit version of get_value.
     uint32_t get_value(TimeUnit tu) const;
@@ -102,11 +102,11 @@ private:
 // keeps data between calls, should not be used otherwise; slips will contain the number of skipped periods, if provided.
 // Usage:
 // void loop() {
-//     Timestamp cur_time = Timestamp::cur_time();       
+//     Timestamp cur_time = Timestamp::cur_time();
 //     static Timestamp block_prev_run(cur_time);
 //     if (throttle_ms(TimeDelta(1000, msec), cur_time, &block_prev_run)) {
 //         // This block will be executed once every 1000 ms.
-//     }   
+//     }
 // }
 inline bool throttle_ms(TimeDelta period_time, Timestamp cur_time, Timestamp *prev_run_time, unsigned *slips = 0) {
     unsigned cnt = 0;

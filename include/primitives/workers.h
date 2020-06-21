@@ -4,7 +4,7 @@
 #include <list>
 #include <memory>
 
-// Simple worker node pattern. 
+// Simple worker node pattern.
 // To create a worker node, inherit from this interface and override functions needed.
 class WorkerNode {
 public:
@@ -31,21 +31,21 @@ public:
 // Pipeline 'owns' all the nodes and all of them will be deleted when the pipeline is deleted.
 class Pipeline : public WorkerNode {
 public:
-    Pipeline() 
-        : stop_requested_(false) 
+    Pipeline()
+        : stop_requested_(false)
     {}
 
     // Adding WorkerNodes to this pipeline. Note, after this Pipeline starts to own them and will
     // destruct them when needed. Suggested usage:
     // SpecializedNode *node = pipeline->add_front(std::make_unique<SpecializedNode>());
-    template<typename T> 
-    T *add_front(std::unique_ptr<T> node) { 
+    template<typename T>
+    T *add_front(std::unique_ptr<T> node) {
         T *res = node.get();
         nodes_.emplace_front(std::move(node));
         return res;
     }
 
-    template<typename T> 
+    template<typename T>
     T *add_back(std::unique_ptr<T> node) {
         T *res = node.get();
         nodes_.emplace_back(std::move(node));
@@ -60,7 +60,7 @@ public:
         // Process incoming work until finished.
         while (!stop_requested_)
             do_work(Timestamp::cur_time());
-        
+
         // TODO someday: create method end(), symmetrical to start().
     }
 
@@ -74,7 +74,7 @@ public:
 
     // Define WorkerNode functions to work on all nodes in order.
     virtual void do_work(Timestamp cur_time) {
-        for (auto& node : nodes_) 
+        for (auto& node : nodes_)
             node->do_work(cur_time);
     }
     virtual void start() {
@@ -82,14 +82,14 @@ public:
             node->start();
     }
     virtual bool debug_cmd(HashedWord *input_words) {
-        for (auto& node : nodes_) 
+        for (auto& node : nodes_)
             if (node->debug_cmd(input_words))
                 return true;
-         return false; 
+         return false;
     }
     virtual void debug_print(PrintStream &stream) {
-        for (auto& node : nodes_) 
-            node->debug_print(stream); 
+        for (auto& node : nodes_)
+            node->debug_print(stream);
     }
 
 protected:

@@ -15,7 +15,7 @@ public:
     void setupEIC();
     void connectInterruptsToTimer();
     void setupTimer();
-    void irqHandler(bool rising, unsigned int ticks);
+    void irqHandler(uint16_t pulse_start, uint16_t pulse_stop);
 
     virtual void start();
     virtual void do_work(Timestamp time);
@@ -27,4 +27,8 @@ private:
     bool rising_received_;
     bool pulse_polarity_;
     static CreatorRegistrar creator_;
+    bool found_config;
+    int config_idx;
+    int ioPin;
+    bool nodes_set;
 };

@@ -15,18 +15,30 @@ struct PinConfig
     unsigned int channel_falling_idx;
     unsigned int GCLK_CLKCTRL_RISING;
     unsigned int GCLK_CLKCTRL_FALLING;
-    unsigned int TCC_MC_RISING;
-    unsigned int TCC_MC_FALLING;
+    unsigned int TCC_IDX;
 
 };
 
+struct TCC_Config
+{
+    unsigned int TCC_MC_RISING;
+    unsigned int TCC_MC_FALLING;
+};
+
+const static TCC_Config tcc_config [] = {
+    {EVSYS_ID_USER_TCC0_MC_0, EVSYS_ID_USER_TCC0_MC_1},
+    {EVSYS_ID_USER_TCC1_MC_0, EVSYS_ID_USER_TCC1_MC_1}
+};
+
+
 const static PinConfig available_congfigs[] = {
-    {7, PORT_PA21, 21, EVSYS_ID_GEN_EIC_EXTINT_5, 5, 0, 5, 2, 3, GCLK_CLKCTRL_ID_EVSYS_2, GCLK_CLKCTRL_ID_EVSYS_3, EVSYS_ID_USER_TCC0_MC_0, EVSYS_ID_USER_TCC0_MC_1},
-    {3, PORT_PA09, 9, EVSYS_ID_GEN_EIC_EXTINT_9, 9, 1, 1, 0, 1, GCLK_CLKCTRL_ID_EVSYS_0, GCLK_CLKCTRL_ID_EVSYS_1, EVSYS_ID_USER_TCC1_MC_0, EVSYS_ID_USER_TCC1_MC_1}
+    {7, PORT_PA21, 21, EVSYS_ID_GEN_EIC_EXTINT_5, 5, 0, 5, 2, 3, GCLK_CLKCTRL_ID_EVSYS_2, GCLK_CLKCTRL_ID_EVSYS_3, 0},
+    {3, PORT_PA09, 9, EVSYS_ID_GEN_EIC_EXTINT_9, 9, 1, 1, 0, 1, GCLK_CLKCTRL_ID_EVSYS_0, GCLK_CLKCTRL_ID_EVSYS_1, 1}
 };
 
 static InputTimNode* connecteNodes_[2];
 
+static bool timer_initialized = false;
 
 InputTimNode::InputTimNode(uint32_t input_idx, const InputDef &input_def)
     : InputNode(input_idx)
@@ -37,11 +49,20 @@ InputTimNode::InputTimNode(uint32_t input_idx, const InputDef &input_def)
     pin_config_ = find_config_for_pin(input_def.pin);
     if (!pin_config_)
         throw_printf("Pin %d has no available config.", input_def.pin);
+    else
+        found_config=true;
 
-    if (connecteNodes_[input_idx]){
+    if (connecteNodes_[pin_config_->TCC_IDX]){
         throw_printf("TCC %d is already takenk", input_idx);
     }
-    connecteNodes_[input_idx] = this;
+    else{
+        nodes_set=true;
+
+    }
+    connecteNodes_[pin_config_->TCC_IDX] = this;
+
+    config_idx = pin_config_->TCC_IDX;
+    ioPin = pin_config_->ioPin;
 
 }
 
@@ -53,16 +74,21 @@ InputTimNode::~InputTimNode() {
 void InputTimNode::start()
 {
   //configure the timing clock we'll use for counting cycles between IR pules
-  setupClock();
+//  if (!timer_initialized){
+    setupClock();
+
+    setupTimer();
+    timer_initialized = true;
+//  }
 
   connectPortPinsToInterrupt();
 
   //setup our external interrupt controller
-  setupEIC();
+    setupEIC();
 
-  connectInterruptsToTimer();
+    connectInterruptsToTimer();
 
-  setupTimer();
+    setupTimer();
 
   SerialUSB.println("start");
 
@@ -93,8 +119,19 @@ const PinConfig* InputTimNode::find_config_for_pin(const uint8_t &pin)
 
 void InputTimNode::do_work(Timestamp cur_time) {
     InputNode::do_work(cur_time);
+
     //SerialUSB.println((F_CPU / sec) - 1);
-    //SerialUSB.println( sec);
+    /*SerialUSB.print("nodes_set: " );
+    SerialUSB.print(nodes_set);
+    SerialUSB.print(" found_config: ");
+    SerialUSB.print(found_config);
+    SerialUSB.print(" config_idx ");
+    SerialUSB.print(config_idx);
+    SerialUSB.print(" ioPin ");
+    SerialUSB.print(ioPin);
+    SerialUSB.print("\n");
+    */
+   //:w + (int)nodes_set + " found_config " + (int)found_config + " config_idx " + config_idx);
 }
 
 void InputTimNode::setupClock()
@@ -128,7 +165,8 @@ void InputTimNode::setupClock()
     while (!SYSCTRL->PCLKSR.bit.DFLLRDY);
 
     //setup the divisor for the GCLK0 clock source generator
-    REG_GCLK_GENDIV = GCLK_GENDIV_DIV(F_CPU / sec) |                                  //do not divide the input clock (48MHz / 1)
+    REG_GCLK_GENDIV = GCLK_GENDIV_DIV((F_CPU / sec) * 1) |                                  //do not divide the input clock (48MHz / 1)
+    //REG_GCLK_GENDIV = GCLK_GENDIV_DIV(0) |                                  //do not divide the input clock (48MHz / 1)
                     GCLK_GENDIV_ID(3);                                    //for GCLK3
 
     //  SYSCTRL->OSC32K.bit.ENABLE = 1;
@@ -144,6 +182,8 @@ void InputTimNode::setupClock()
     //    (0x08 << 8) |
     GCLK_GENCTRL_ID(3);                                  //for GCLK3
     while (GCLK->STATUS.bit.SYNCBUSY);
+
+
 
     //setup the clock output to go to the EIC
     REG_GCLK_CLKCTRL = GCLK_CLKCTRL_CLKEN |                                 //enable the clock
@@ -164,7 +204,6 @@ void InputTimNode::setupClock()
     REG_GCLK_CLKCTRL = GCLK_CLKCTRL_CLKEN |                                 //enable the clock
                      GCLK_CLKCTRL_GEN_GCLK3 |                             //to send GCLK3
                      GCLK_CLKCTRL_ID_TCC0_TCC1;                           //to TCC0 and TCC1
-
     //wait for synchronization
     while (GCLK->STATUS.bit.SYNCBUSY);
 }
@@ -202,12 +241,12 @@ void InputTimNode::setupEIC()
     //right diode interrupt config
     //  EIC->CONFIG[1].bit.FILTEN1 = 1;
     //detect high level detection (both edges)
-    EIC->CONFIG[pin_config_->SENSE_CFG_IDX].reg = EIC_CONFIG_SENSE1_HIGH_Val << 4 * pin_config_->SENSE_IDX;
+    EIC->CONFIG[pin_config_->SENSE_CFG_IDX].reg |= EIC_CONFIG_SENSE1_HIGH_Val << 4 * pin_config_->SENSE_IDX;
     //EIC->CONFIG[cfg_bit].bit.SENSE0 = EIC_CONFIG_SENSE1_HIGH_Val << 4 * sens;
     //generate interrupts on interrupt #9 when edges are detected
 
    // EIC->INTENCLR.bit.EXTINT0   = (1 << pin_config_->EXTINT); // p.468 The external interrupt 9 is enabled
-    EIC->EVCTRL.reg = (0x01 << pin_config_->EXTINT); // p.467 Event from pin 9 is enabled and will be generated when this pin matches the external interrupt sensing config.
+    EIC->EVCTRL.reg |= (0x01 << pin_config_->EXTINT); // p.467 Event from pin 9 is enabled and will be generated when this pin matches the external interrupt sensing config.
 
     //enable the EIC
     EIC->CTRL.bit.ENABLE = 1;
@@ -257,7 +296,7 @@ void InputTimNode::connectInterruptsToTimer()
 
     //output config for right diode
     REG_EVSYS_USER = EVSYS_USER_CHANNEL(pin_config_->channel_rising_idx + 1) |                                //attach output from channel 0 (n+1)
-                   EVSYS_USER_USER(pin_config_->TCC_MC_RISING);              //to user (recipient) TCC0, MC0
+                   EVSYS_USER_USER(pulse_polarity_? tcc_config[pin_config_->TCC_IDX].TCC_MC_RISING : tcc_config[pin_config_->TCC_IDX].TCC_MC_FALLING);              //to user (recipient) TCC0, MC0
     while (!USRRDYForChannel(pin_config_->channel_rising_idx));
 
     //input config for right diode
@@ -268,10 +307,23 @@ void InputTimNode::connectInterruptsToTimer()
 
     //output config for right diode
     REG_EVSYS_USER = EVSYS_USER_CHANNEL(pin_config_->channel_falling_idx + 1) |                                //attach output from channel 1 (n+1)
-                   EVSYS_USER_USER(pin_config_->TCC_MC_FALLING);              //to user (recipient) TCC0, MC1
+                   EVSYS_USER_USER(pulse_polarity_? tcc_config[pin_config_->TCC_IDX].TCC_MC_FALLING : tcc_config[pin_config_->TCC_IDX].TCC_MC_RISING);              //to user (recipient) TCC0, MC1
     while (!USRRDYForChannel(pin_config_->channel_rising_idx));
 
 }
+
+uint16_t TCC_CTRLA_PRESCALER_DIV(int div)
+{
+    switch (div)
+    {
+        case 1 : return TCC_CTRLA_PRESCALER_DIV1;
+        case 2 : return TCC_CTRLA_PRESCALER_DIV2;
+        case 4 : return TCC_CTRLA_PRESCALER_DIV4;
+        case 8 : return TCC_CTRLA_PRESCALER_DIV8;
+        default : return TCC_CTRLA_PRESCALER_DIV1;
+    }
+}
+
 
 void InputTimNode::setupTimer()
 {
@@ -288,7 +340,8 @@ void InputTimNode::setupTimer()
     //    TCC_CTRLA_RESOLUTION_DITH4 |
     //    TCC_CTRLA_ALOCK |
     //    TCC_CTRLA_PRESCSYNC_GCLK |
-    TCC_CTRLA_PRESCALER_DIV1;       //set timer prescaler to 1 (48MHz)
+    //TCC_CTRLA_PRESCALER_DIV4;       //set timer prescaler to 1 (48MHz)
+    TCC_CTRLA_PRESCALER_DIV(1);
     //    TCC_CTRLA_CPTEN3 |              //place MC3 into capture (not compare) mode
     //    TCC_CTRLA_CPTEN2 |              //place MC2 into capture (not compare) mode
 
@@ -298,16 +351,20 @@ void InputTimNode::setupTimer()
     TCC_EVCTRL_MCEI1 ;               //when MC1 events occur, capture COUNT to CC1
     //    TCC_EVCTRL_MCEI3 |             //when MC3 events occur, capture COUNT to CC3
     //    TCC_EVCTRL_MCEI2 |             //when MC2 events occur, capture COUNT to CC2
-    //    TCC_EVCTRL_TCEI1 |             //enable the event 1 input
-    //    TCC_EVCTRL_TCEI0 |             //enable the event 0 input
-    // TCC_EVCTRL_TCINV1 |             //enable the event 1 inverted input
-    // TCC_EVCTRL_TCINV0 ;             //enable the event 0 inverted input
+  //      TCC_EVCTRL_TCEI1 |             //enable the event 1 input
+  //      TCC_EVCTRL_TCEI0 |             //enable the event 0 input
+   //  TCC_EVCTRL_TCINV1 |             //enable the event 1 inverted input
+   //  TCC_EVCTRL_TCINV0 ;             //enable the event 0 inverted input
     //    TCC_EVCTRL_CNTEO |
     //    TCC_EVCTRL_TRGEO |
     //    TCC_EVCTRL_OVFEO |
     //    TCC_EVCTRL_CNTSEL_BOUNDARY |
     //    TCC_EVCTRL_EVACT1_RETRIGGER |  //retrigger CC1 on event 1 (each time an edge is detected)
     //    TCC_EVCTRL_EVACT0_RETRIGGER;   //retrigger CC0 on event 0 (each time an edge is detected)
+
+    //TCC0->EVCTRL.bit.TCINV0 = 1;
+    //TCC0->EVCTRL.bit.TCINV1 = 1;
+    //
 
     //setup our desired interrupts
     REG_TCC0_INTENSET =
@@ -339,11 +396,15 @@ void InputTimNode::setupTimer()
     REG_TCC1_CTRLA =
     TCC_CTRLA_CPTEN0 |              //place MC0 into capture (not compare) mode
     TCC_CTRLA_CPTEN1 |              //place MC1 into capture (not compare) mode
-    TCC_CTRLA_PRESCALER_DIV1;       //set timer prescaler to 1 (48MHz)
+    TCC_CTRLA_PRESCALER_DIV(1);
+    //TCC_CTRLA_PRESCALER_DIV4;       //set timer prescaler to 1 (48MHz)
 
     REG_TCC1_EVCTRL =
     TCC_EVCTRL_MCEI0 |              //when MC0 events occur, capture COUNT to CC0
-    TCC_EVCTRL_MCEI1;               //when MC1 events occur, capture COUNT to CC1
+    TCC_EVCTRL_MCEI1 ;             //when MC1 events occur, capture COUNT to CC1
+    //  TCC_EVCTRL_TCINV1 |             //enable the event 1 inverted input
+     //TCC_EVCTRL_TCINV0 ;             //enable the event 0 inverted input
+
 
     REG_TCC1_INTENSET =
     // TCC_INTENSET_MC0 |              //enable interrupts when a capture occurs on TCC1/MC0
@@ -361,20 +422,13 @@ void InputTimNode::setupTimer()
 }
 
 
-void InputTimNode::irqHandler(bool rising, unsigned int ticks)
+void InputTimNode::irqHandler(uint16_t pulse_start, uint16_t pulse_stop)
 {
-    SerialUSB.println("irqHandler");
-    if (rising)
-    {
-        pulse_start_ = (uint16_t)ticks;
-        rising_received_ = true;
-    }
-    else if(rising_received_)
+    //SerialUSB.println("\nirqHandler");
     {
         // We assume that the pulse length is within one timer period.
         Timestamp cur_time = Timestamp::cur_time();
-        uint16_t pulse_stop  = (uint16_t)ticks;
-        uint16_t pulse_len = pulse_stop - pulse_start_;
+        uint16_t pulse_len = pulse_stop - pulse_start;
         TimeDelta pulse_len_ts(pulse_len, (TimeUnit)1);
 
         // We also assume that the time between end of pulse and interrupt is also within one period.
@@ -384,6 +438,21 @@ void InputTimNode::irqHandler(bool rising, unsigned int ticks)
         TimeDelta time_from_pulse_stop_ts(time_from_pulse_stop, (TimeUnit)1);
 
         Timestamp pulse_start_ts(cur_time - time_from_pulse_stop_ts - pulse_len_ts);
+        TimeDelta min_long_pulse_len(40, usec);
+        TimeDelta max_long_pulse_len(300, usec);
+        if (pulse_len_ts > max_long_pulse_len)
+        {
+     //       SerialUSB.println("too long");
+        }else if(pulse_len_ts >= min_long_pulse_len){
+
+      //      SerialUSB.println("long pulse");
+        }else{
+       //     SerialUSB.println("short pulse");
+        }
+        /*SerialUSB.print(pulse_len_ts.get_value((TimeUnit)1));
+        SerialUSB.print(" ");
+        SerialUSB.print(min_long_pulse_len.get_value((TimeUnit)1));
+        SerialUSB.print("\n");*/
         InputNode::enqueue_pulse(pulse_start_ts, pulse_len_ts);
         rising_received_ = false;
     }
@@ -393,33 +462,23 @@ void InputTimNode::irqHandler(bool rising, unsigned int ticks)
 
 void TCC0_Handler()
 {
-    SerialUSB.println("TCC0_handler");
+    //SerialUSB.println("\nTCC0_handler");
     if (connecteNodes_[0])
     {
-      if (TCC0->INTFLAG.bit.MC0) {
-        unsigned int cc0 = REG_TCC0_CC0;
-        connecteNodes_[0]->irqHandler(true, cc0);
-      }
-      if (TCC0->INTFLAG.bit.MC1) {
-        unsigned int cc1 = REG_TCC0_CC1;
-         connecteNodes_[0]->irqHandler(false, cc1);
-      }
+        uint16_t start = REG_TCC0_CC0;
+        uint16_t end = REG_TCC0_CC1;
+        connecteNodes_[0]->irqHandler(start, end);
     }
 }
 
 void TCC1_Handler()
 {
-    SerialUSB.println("TCC1_handler");
+   // SerialUSB.println("\nTCC1_handler");
     if (connecteNodes_[1])
     {
-      if (TCC1->INTFLAG.bit.MC0) {
-        unsigned int cc0 = REG_TCC1_CC0;
-        connecteNodes_[1]->irqHandler(true, cc0);
-      }
-      if (TCC1->INTFLAG.bit.MC1) {
-        unsigned int cc1 = REG_TCC1_CC1;
-         connecteNodes_[1]->irqHandler(false, cc1);
-      }
+        uint16_t start = REG_TCC1_CC0;
+        uint16_t end = REG_TCC1_CC1;
+        connecteNodes_[1]->irqHandler(start, end);
     }
 }
 

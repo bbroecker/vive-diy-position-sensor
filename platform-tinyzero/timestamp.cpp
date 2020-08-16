@@ -5,7 +5,7 @@
 #define SCB_ICSR (*(volatile uint32_t *)0xE000ED04) // Interrupt Control and State
 #define SCB_ICSR_PENDSTSET ((uint32_t)0x04000000)  // SysTick is pending
 
-#define F_CPU  480000000
+#define F_CPU  48000000
 
 Timestamp Timestamp::cur_time() {
     // Repeat logic inside micros(), but get better precision, up to a single CPU tick.

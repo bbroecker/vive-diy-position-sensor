@@ -14,7 +14,7 @@ void calc_ray_vec(const BaseStationGeometryDef &bs, float angle1, float angle2, 
 
 
 GeometryBuilder::GeometryBuilder(uint32_t idx, const GeometryBuilderDef &geo_def,
-                                 const Vector<BaseStationGeometryDef, num_base_stations> &base_stations) 
+                                 const Vector<BaseStationGeometryDef, num_base_stations> &base_stations)
     : object_idx_(idx)
     , base_stations_(base_stations)
     , def_(geo_def) {
@@ -50,19 +50,19 @@ void PointGeometryBuilder::consume(const SensorAnglesFrame& f) {
             max_stale = std::max(max_stale, f.cycle_idx - sens.updated_cycles[i]);
 
         if (max_stale < num_cycle_phases * 3) {  // We tolerate stale angles up to 2 cycles old.
-            pos_.fix_level = (max_stale < num_cycle_phases) 
+            pos_.fix_level = (max_stale < num_cycle_phases)
                                 ? FixLevel::kFullFix : FixLevel::kStaleFix;
 
             vec3d ray1, ray2, origin1, origin2;
             calc_ray_vec(base_stations_[0], sens.angles[0], sens.angles[1], ray1, origin1);
             calc_ray_vec(base_stations_[1], sens.angles[2], sens.angles[3], ray2, origin2);
-            
+
             intersect_lines(origin1, ray1, origin2, ray2, &pos_.pos, &pos_.pos_delta);
 
             // Translate object position depending on the position of sensor relative to object.
             for (int i = 0; i < vec3d_size; i++)
                 pos_.pos[i] -= sens_def.pos[i];
-            
+
         } else {
             // Angles too stale - cannot calculate position anymore.
             pos_.fix_level = FixLevel::kPartialVis;
@@ -74,7 +74,7 @@ void PointGeometryBuilder::consume(const SensorAnglesFrame& f) {
 
 void PointGeometryBuilder::do_work(Timestamp cur_time) {
     // TODO: Make compatible with multiple geometry objects.
-    set_led_state(pos_.fix_level >= FixLevel::kStaleFix ? LedState::kFixFound : LedState::kNoFix);
+   // set_led_state(pos_.fix_level >= FixLevel::kStaleFix ? LedState::kFixFound : LedState::kNoFix);
 }
 
 bool PointGeometryBuilder::debug_cmd(HashedWord *input_words) {

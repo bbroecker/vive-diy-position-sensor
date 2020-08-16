@@ -17,7 +17,7 @@ void DataFrameDecoder::consume(const DataFrameBit& frame_bit) {
     // Check we have correct base station.
     if (frame_bit.base_station_idx != base_station_idx_)
         return;
-    
+
     // Check we have correct cycle idx.
     if (prev_cycle_idx_ != 0 && frame_bit.cycle_idx != prev_cycle_idx_ + 1) {
         reset();

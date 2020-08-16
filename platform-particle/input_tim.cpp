@@ -22,19 +22,19 @@ struct TimerConfig {
     uint16_t gpio_af;  // Alternative Function
     uint16_t rcc_apb;
     uint32_t rcc_apb_periph;
-    uint16_t clock_divider; 
+    uint16_t clock_divider;
     uint16_t cc_irq;   // # of Capture/Compare IRQ
-    hal_irq_t irq_by_channel[4]; 
+    hal_irq_t irq_by_channel[4];
 };
 
-static const uint32_t num_timer_configs = 6; 
+static const uint32_t num_timer_configs = 6;
 static const TimerConfig timer_config[num_timer_configs] = {
     {TIM1, GPIO_AF_TIM1, 2, RCC_APB2Periph_TIM1, 1, TIM1_CC_IRQn, {SysInterrupt_TIM1_Compare1, SysInterrupt_TIM1_Compare2, SysInterrupt_TIM1_Compare3, SysInterrupt_TIM1_Compare4}},
-    {TIM2, GPIO_AF_TIM2, 1, RCC_APB1Periph_TIM2, 2, TIM2_IRQn,    {SysInterrupt_TIM2_Compare1, SysInterrupt_TIM2_Compare2, SysInterrupt_TIM2_Compare3, SysInterrupt_TIM2_Compare4}}, 
-    {TIM3, GPIO_AF_TIM3, 1, RCC_APB1Periph_TIM3, 2, TIM3_IRQn,    {SysInterrupt_TIM3_Compare1, SysInterrupt_TIM3_Compare2, SysInterrupt_TIM3_Compare3, SysInterrupt_TIM3_Compare4}}, 
-    {TIM4, GPIO_AF_TIM4, 1, RCC_APB1Periph_TIM4, 2, TIM4_IRQn,    {SysInterrupt_TIM4_Compare1, SysInterrupt_TIM4_Compare2, SysInterrupt_TIM4_Compare3, SysInterrupt_TIM4_Compare4}}, 
-    {TIM5, GPIO_AF_TIM5, 1, RCC_APB1Periph_TIM5, 2, TIM5_IRQn,    {SysInterrupt_TIM5_Compare1, SysInterrupt_TIM5_Compare2, SysInterrupt_TIM5_Compare3, SysInterrupt_TIM5_Compare4}}, 
-    {TIM8, GPIO_AF_TIM8, 2, RCC_APB2Periph_TIM8, 1, TIM8_CC_IRQn, {SysInterrupt_TIM8_Compare1, SysInterrupt_TIM8_Compare2, SysInterrupt_TIM8_Compare3, SysInterrupt_TIM8_Compare4}}, 
+    {TIM2, GPIO_AF_TIM2, 1, RCC_APB1Periph_TIM2, 2, TIM2_IRQn,    {SysInterrupt_TIM2_Compare1, SysInterrupt_TIM2_Compare2, SysInterrupt_TIM2_Compare3, SysInterrupt_TIM2_Compare4}},
+    {TIM3, GPIO_AF_TIM3, 1, RCC_APB1Periph_TIM3, 2, TIM3_IRQn,    {SysInterrupt_TIM3_Compare1, SysInterrupt_TIM3_Compare2, SysInterrupt_TIM3_Compare3, SysInterrupt_TIM3_Compare4}},
+    {TIM4, GPIO_AF_TIM4, 1, RCC_APB1Periph_TIM4, 2, TIM4_IRQn,    {SysInterrupt_TIM4_Compare1, SysInterrupt_TIM4_Compare2, SysInterrupt_TIM4_Compare3, SysInterrupt_TIM4_Compare4}},
+    {TIM5, GPIO_AF_TIM5, 1, RCC_APB1Periph_TIM5, 2, TIM5_IRQn,    {SysInterrupt_TIM5_Compare1, SysInterrupt_TIM5_Compare2, SysInterrupt_TIM5_Compare3, SysInterrupt_TIM5_Compare4}},
+    {TIM8, GPIO_AF_TIM8, 2, RCC_APB2Periph_TIM8, 1, TIM8_CC_IRQn, {SysInterrupt_TIM8_Compare1, SysInterrupt_TIM8_Compare2, SysInterrupt_TIM8_Compare3, SysInterrupt_TIM8_Compare4}},
 };
 
 struct TimerChannelConfig {
@@ -66,17 +66,17 @@ InputTimNode::InputTimNode(uint32_t input_idx, const InputDef &input_def)
 
     if (pin_ >= TOTAL_PINS)
         throw_printf("Pin number too large: %d", pin_);
-    
+
     // Find the timer that serves given pin.
     STM32_Pin_Info& pin_info = HAL_Pin_Map()[pin_];
     timer_ = pin_info.timer_peripheral;
     if (!timer_)
         throw_printf("Pin %d is not connected to any timer", pin_);
-    
+
     for (timer_idx_ = 0; timer_idx_ < num_timer_configs; timer_idx_++)
         if (timer_config[timer_idx_].timer == timer_)
             break;
-    
+
     assert(timer_idx_ < num_timer_configs);
 
     // Get the channel id for the pin. Convert from TIM_Channel_N -> 0..3
@@ -85,7 +85,7 @@ InputTimNode::InputTimNode(uint32_t input_idx, const InputDef &input_def)
     // Check that the channel pair for current pin is still available.
     if (channel_pair_used_by_pin[timer_idx_][channel_idx_/2])
         throw_printf("Pin %d conflicts with pin %d (same channel pair).", pin_, channel_pair_used_by_pin[timer_idx_][channel_idx_/2]-1);
-    
+
     channel_pair_used_by_pin[timer_idx_][channel_idx_/2] = pin_+1;  // Store pin+1 to keep 0 as an 'available' flag.
 }
 
@@ -159,7 +159,7 @@ void InputTimNode::start() {
     TIM_ICInitStruct.TIM_ICPolarity = pulse_polarity_ ? TIM_ICPolarity_Rising : TIM_ICPolarity_Falling;
     TIM_ICInitStruct.TIM_ICSelection = TIM_ICSelection_IndirectTI;
     TIM_ICInit(timer_, &TIM_ICInitStruct);
-    
+
     // Enable interrupt and timer.
     TIM_ITConfig(timer_, channel_conf.it_flag, ENABLE);
     TIM_Cmd(timer_, ENABLE);
@@ -176,7 +176,7 @@ void InputTimNode::_irq_handler() {
     // We assume that the pulse length is within one timer period.
     uint16_t pulse_len = pulse_stop - pulse_start;
     TimeDelta pulse_len_ts(pulse_len, (TimeUnit)1);
-    
+
     // We also assume that the time between end of pulse and interrupt is also within one period.
     // Plus, the timer counter is synchronized with the Timestamp's lower 16 bits.
     uint16_t time_from_pulse_stop = (uint16_t)(cur_time.get_raw_value() & 0xFFFF) - pulse_stop;

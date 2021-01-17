@@ -10,7 +10,7 @@
 // This function is used to print messages used in Producer-Consumer pattern.
 // Please specialize this function for your messages below.
 template<typename T>
-inline void print_value(PrintStream &stream, const T& val); 
+inline void print_value(PrintStream &stream, const T& val);
 
 template<>
 inline void print_value<Pulse>(PrintStream &stream, const Pulse& val) {
@@ -19,7 +19,7 @@ inline void print_value<Pulse>(PrintStream &stream, const Pulse& val) {
 
 template<>
 inline void print_value<SensorAnglesFrame>(PrintStream &stream, const SensorAnglesFrame& val) {
-    stream.printf("\n%dms: cycle %u, fix %02d, angles ", 
+    stream.printf("\n%dms: cycle %u, fix %02d, angles ",
                   val.time.get_value(msec), val.cycle_idx, (int)val.fix_level / 100);
     for (uint32_t i = 0; i < val.sensors.size(); i++) {
         auto sens = val.sensors[i];
@@ -36,7 +36,7 @@ inline void print_value<SensorAnglesFrame>(PrintStream &stream, const SensorAngl
 
 template<>
 inline void print_value<DataFrameBit>(PrintStream &stream, const DataFrameBit& val) {
-    stream.printf("\n%dms: base %d, cycle %d, bit %d ", 
+    stream.printf("\n%dms: base %d, cycle %d, bit %d ",
                   val.time.get_value(msec), val.base_station_idx, val.cycle_idx, val.bit);
 }
 
@@ -45,12 +45,12 @@ inline void print_value<DataFrame>(PrintStream &stream, const DataFrame& frame) 
     stream.printf("\n%dms: ", frame.time.get_value(msec));
     const DecodedDataFrame *df = reinterpret_cast<const DecodedDataFrame *>(&frame.bytes[0]);
     if (frame.bytes.size() == 33 && df->protocol == DecodedDataFrame::cur_protocol) {
-        stream.printf("fw %u, id 0x%08x, desync %u, hw %u, accel [%d, %d, %d], mode %c, faults %u ", 
-            (uint32_t)df->fw_version, df->id, (uint32_t)df->sys_unlock_count, (uint32_t)df->hw_version, 
+        stream.printf("fw %u, id 0x%08x, desync %u, hw %u, accel [%d, %d, %d], mode %c, faults %u ",
+            (uint32_t)df->fw_version, df->id, (uint32_t)df->sys_unlock_count, (uint32_t)df->hw_version,
             (int32_t)df->accel_dir[0], (int32_t)df->accel_dir[1], (int32_t)df->accel_dir[2],
             df->mode_current+'A', (uint32_t)df->sys_faults);
         for (uint32_t i = 0; i < num_base_stations; i++)
-            stream.printf("\n    fcal%d: phase %.4f, tilt %.4f, curve %.4f, gibphase %.4f, gibmag %.4f ", 
+            stream.printf("\n    fcal%d: phase %.4f, tilt %.4f, curve %.4f, gibphase %.4f, gibmag %.4f ",
                 i, (float)df->fcal_phase[i], (float)df->fcal_tilt[i], (float)df->fcal_curve[i], (float)df->fcal_gibphase[i], (float)df->fcal_gibmag[i]);
     } else {
         // Unknown protocol.
@@ -62,7 +62,7 @@ inline void print_value<DataFrame>(PrintStream &stream, const DataFrame& frame) 
 
 template<>
 inline void print_value<ObjectPosition>(PrintStream &stream, const ObjectPosition& val) {
-    stream.printf("\n%dms: fix %2d, pos %.4f %.4f %.4f, dist %.4f ", val.time.get_value(msec), 
+    stream.printf("\n%dms: fix %2d, pos %.4f %.4f %.4f, dist %.4f ", val.time.get_value(msec),
                                             (int)val.fix_level/100, val.pos[0], val.pos[1], val.pos[2], val.pos_delta);
     if (val.q[0] != 1.0f)
         stream.printf(" Q %.4f %.4f %.4f %.4f ", val.q[0], val.q[1], val.q[2], val.q[3]);
@@ -106,7 +106,7 @@ class PrintingProducerLogger : public PrintableProduceLogger<T> {
 public:
     PrintingProducerLogger(const char *name, uint32_t idx): name_(name), idx_(idx), counter_(0) {}
     virtual void log_produce(const T& val) {
-        if (log_.full()) 
+        if (log_.full())
             log_.pop_front();  // Ensure we have space to write, we're more interested in recent values.
         log_.enqueue(val);
         counter_++;

@@ -3,6 +3,7 @@
 #include "primitives/timestamp.h"
 #include "primitives/vector.h"
 #include <stdint.h>
+#include <string>
 
 // Tunable constants
 constexpr int max_num_inputs = 8;            // Number of concurrent sensors supported.
@@ -75,6 +76,12 @@ struct DataChunk {
     Vector<uint8_t, max_bytes_in_data_chunk> data;  // Data of this chunk.
     uint32_t stream_idx;  // Used to distinguish between different streams going to the same output. Useful for polling mode.
     bool last_chunk;  // True if this is the last chunk in a "packet". Useful for polling mode.
+};
+
+struct DebugString
+{
+    std::string text;
+    float data[10];
 };
 
 

@@ -14,16 +14,27 @@ set(TINY_SOURCE_FILES
         input_tim.cpp
 )
 
+set(TINY_MOTOR_FILES
+    motor_main.cpp
+    timestamp.cpp
+    car_control/bluetooth_handler.cpp
+    car_control/motor_controller.cpp
+    UART.h)
+
 add_executable(tiny_main "${TINY_SOURCE_FILES}")
+add_executable(tiny_motor "${TINY_MOTOR_FILES}")
 
 
 target_link_libraries(tiny_main PRIVATE sensor-core)
+target_link_libraries(tiny_motor PRIVATE sensor-core)
 
 # Arduino.h is included in hello_world.cpp, so link with Arduino core
 target_link_arduino_libraries(tiny_main PRIVATE core SPI)
+target_link_arduino_libraries(tiny_motor PRIVATE core SPI STBLE)
 
 # This is needed for the generation of HEX binary and uploading it
 target_enable_arduino_upload(tiny_main)
+target_enable_arduino_upload(tiny_motor)
 
 message(${CMAKE_SOURCE_DIR})
 

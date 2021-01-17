@@ -3,6 +3,7 @@
 #include "primitives/producer_consumer.h"
 #include "primitives/vector.h"
 #include "messages.h"
+#include "string.h"
 
 // Naive 3d vector type.
 constexpr int vec3d_size = 3;
@@ -38,7 +39,7 @@ class GeometryBuilder
 public:
     GeometryBuilder(uint32_t idx, const GeometryBuilderDef &geo_def,
                     const Vector<BaseStationGeometryDef, num_base_stations> &base_stations);
-    
+
 protected:
     uint32_t object_idx_;
     const Vector<BaseStationGeometryDef, num_base_stations> &base_stations_;
@@ -60,6 +61,33 @@ private:
     ObjectPosition pos_;
 };
 
+// Simple class for single-point sensors, on a 2d plane.
+// Requires only one lighthouse
+class Point2DGeometryBuilder : public GeometryBuilder, public Producer<DebugString> {
+
+    using Producer<ObjectPosition>::produce;
+    using Producer<DebugString>::produce;
+    using GeometryBuilder::pipe;
+    using Producer<DebugString>::pipe;
+    //using GeometryBuilder::producer_debug_cmd;
+    //using GeometryBuilder::debug_print;
+public:
+    Point2DGeometryBuilder(uint32_t idx, const GeometryBuilderDef &geo_def,
+                         const Vector<BaseStationGeometryDef, num_base_stations> &base_stations, float plane_height);
+    virtual void consume(const SensorAnglesFrame& f);
+    virtual void do_work(Timestamp cur_time);
+
+    virtual bool debug_cmd(HashedWord *input_words);
+    virtual void debug_print(PrintStream &stream);
+    virtual FixLevel calculatePosition(const int base_stations_idx, const SensorAngles &sens, const SensorAnglesFrame &f);
+
+
+private:
+    ObjectPosition pos_;
+    vec3d plane_vec_1;
+    vec3d plane_vec_2;
+    vec3d plane_origin;
+};
 
 // Stored type and definition for CoordinateSystemConverter.
 enum class CoordSysType {

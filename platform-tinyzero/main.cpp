@@ -16,14 +16,14 @@ class GeometrySerial : public Consumer<ObjectPosition> {
    // SerialUSB.printf("OBJ%d\t%u\t%d\n", f.object_idx, f.time.get_value(msec), f.fix_level);
     if (f.fix_level >= FixLevel::kStaleFix ) {
 
-       /* SerialUSB.println("GOT POSE");
+        SerialUSB.println("GOT POSE");
         SerialUSB.print("x: ");
-        SerialUSB.print(-f.pos[2]);
+        SerialUSB.print(-f.pos[2], 4);
         SerialUSB.print("y: ");
-        SerialUSB.print(-f.pos[0]);
+        SerialUSB.print(-f.pos[0], 4);
         SerialUSB.print("z: ");
-        SerialUSB.print(f.pos[1]);
-        SerialUSB.println();*/
+        SerialUSB.print(f.pos[1], 4);
+        SerialUSB.println();
     //   SerialUSB.printf("\t%.4f\t%.4f\t%.4f\t%.4f \t%d\n", f.pos[0], f.pos[1], f.pos[2], f.pos_delta, f.object_idx);
         //pos_measurement.x = -f.pos[2];
        // pos_measurement.y = -f.pos[0];
@@ -91,9 +91,26 @@ class ConsumeDataFrame : public Consumer<DataFrame>
 
 };
 
+class ConsumeDebug : public Consumer<DebugString>
+{
+
+    void consume(const DebugString& debug_txt)
+    {
+
+        SerialUSB.print("debug text: ");
+        for (int i = 0; i < 3; i++){
+            SerialUSB.print(debug_txt.data[i]);
+            SerialUSB.print(" ");
+        }
+        SerialUSB.println();
+    }
+
+};
 
 
 std::unique_ptr<Pipeline> pipeline;
+::Vector<BaseStationGeometryDef, 2> base_station_defs;
+GeometryBuilderDef builder_def;
 
 
 // the setup routine runs once when you press reset:
@@ -101,9 +118,10 @@ void setup() {
 
     auto consumer = new GeometrySerial();
     auto consumer_angle = new AngleCon();
-    InputDef input_def_1 {3, false, InputType::kTimer, 0};
+    auto consumer_debug = new ConsumeDebug();
+    InputDef input_def_1 {3, true, InputType::kTimer, 0};
 
-    InputDef input_def_2 {7, false, InputType::kTimer, 1};
+    InputDef input_def_2 {7, true, InputType::kTimer, 1};
     pipeline = std::make_unique<Pipeline>();
     //InputDef input_def = {.pin=3, .pulse_polarity=false, .input_type=InputType::kTimer, .initial_cmp_threshold=0};
 
@@ -122,7 +140,6 @@ void setup() {
     //auto node_2 = pipeline->add_front(std::move(input_node_2));
     //node_2->pipe(pulse_processor);
 
-    ::Vector<BaseStationGeometryDef, 2> base_station_defs;
     BaseStationGeometryDef base_def_1 = {.mat = {-0.260703, 0.393942, -0.881387,  -0.079763, 0.901048, 0.426322 , 0.962118, 0.181445, -0.203484}, .origin = {-1.369170, 1.995489, -0.555100}};
     BaseStationGeometryDef base_def_2 = {.mat = {-0.311722, -0.229114, 0.922136, 0.022549, 0.968436, 0.248240, -0.949906, 0.098175, -0.296717}, .origin = {1.672622, 1.944626, -0.599123}};
     base_station_defs.push(base_def_1);
@@ -134,15 +151,15 @@ void setup() {
     data_frame_decoder->pipe(data_frame_consumer);
 
     // Create geometry builders as configured.
-    GeometryBuilderDef builder_def;
     SensorLocalGeometry sensor = {.input_idx=0, .pos = {0, 0, 0}};
     builder_def.sensors.push(sensor);
 
-    auto geo_builder_node = pipeline->add_back(std::make_unique<PointGeometryBuilder>(0, builder_def, base_station_defs));
+    auto geo_builder_node = pipeline->add_back(std::make_unique<Point2DGeometryBuilder>(0, builder_def, base_station_defs, 0.6));
     pulse_processor->Producer<SensorAnglesFrame>::pipe(geo_builder_node);
     pulse_processor->Producer<SensorAnglesFrame>::pipe(consumer_angle);
     pulse_processor->Producer<DataFrameBit>::pipe(data_frame_decoder);
-    geo_builder_node->pipe(consumer);
+    geo_builder_node->Producer<ObjectPosition>::pipe(consumer);
+    geo_builder_node->Producer<DebugString>::pipe(consumer_debug);
 
 }
 

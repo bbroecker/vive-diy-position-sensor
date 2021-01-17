@@ -9,8 +9,11 @@
 #include "led_state.h"
 
 
+
 bool intersect_lines(const vec3d &orig1, const vec3d &vec1, const vec3d &orig2, const vec3d &vec2, vec3d *res, float *dist);
+bool intersect_line_with_plane(const vec3d &ray_origin, const vec3d &ray, const vec3d &plane_origin, const vec3d &plane_vec_1, const vec3d &plane_vec_2, vec3d *res);
 void calc_ray_vec(const BaseStationGeometryDef &bs, float angle1, float angle2, vec3d &ray, vec3d &origin);
+void calc_ray_vec(const BaseStationGeometryDef &bs, float angle1, float angle2, vec3d &ray, vec3d &origin, Producer<DebugString> *producer);
 
 
 GeometryBuilder::GeometryBuilder(uint32_t idx, const GeometryBuilderDef &geo_def,
@@ -24,6 +27,88 @@ GeometryBuilder::GeometryBuilder(uint32_t idx, const GeometryBuilderDef &geo_def
         throw_printf("2 base stations must be defined to use geometry builders.");
 }
 
+Point2DGeometryBuilder::Point2DGeometryBuilder(uint32_t idx, const GeometryBuilderDef &geo_def,
+                                           const Vector<BaseStationGeometryDef, num_base_stations> &base_stations, float plane_height)
+    : GeometryBuilder(idx, geo_def, base_stations)
+    , pos_{Timestamp(), idx, FixLevel::kNoSignals, {0.f, 0.f, 0.f}, 0.f, {1.f, 0.f, 0.f, 0.f}}, plane_vec_1{1, 0, 0}, plane_vec_2{0,1, 0}, plane_origin{0, 0, plane_height} {
+    assert(geo_def.sensors.size() == 1);
+}
+
+
+
+FixLevel Point2DGeometryBuilder::calculatePosition(const int base_stations_idx, const SensorAngles &sens, const SensorAnglesFrame &f)
+{
+    int sens_angle_1_idx = base_stations_idx * 2;
+    int sens_angle_2_idx = sens_angle_1_idx + 1;
+    uint32_t max_stale = 0;
+    for (int i = sens_angle_1_idx; i <= sens_angle_2_idx; i++)
+    {
+        max_stale = std::max(max_stale, f.cycle_idx - sens.updated_cycles[i]);
+    }
+    if (max_stale < num_cycle_phases * 3) // we tolerate stale angles up to 2 cycles old
+    {
+
+        vec3d ray, ray_origin;
+        calc_ray_vec(base_stations_[base_stations_idx], sens.angles[sens_angle_1_idx], sens.angles[sens_angle_2_idx], ray, ray_origin, this);
+        intersect_line_with_plane(ray_origin, ray, plane_origin, plane_vec_1, plane_vec_2, &pos_.pos );
+        pos_.pos[0] = ray[0];
+        pos_.pos[1] = ray[1];
+        pos_.pos[2] = ray_origin[2];
+        return (max_stale < num_cycle_phases) ? FixLevel::kFullFix : FixLevel::kStaleFix;
+    }
+    else
+    {
+        return FixLevel::kPartialVis;
+    }
+
+
+
+}
+
+
+void Point2DGeometryBuilder::consume(const SensorAnglesFrame& f) {
+    // First 2 angles - x, y of station B; second 2 angles - x, y of station C.
+    // Coordinate system: Y - Up;  X ->  Z v  (to the viewer)
+    // Station 'looks' to inverse Z axis (vector 0;0;-1).
+    pos_.time = f.time;
+    pos_.fix_level = f.fix_level;
+
+    if (f.fix_level >= FixLevel::kCycleSynced) {
+        const SensorLocalGeometry &sens_def = def_.sensors[0];
+        const SensorAngles &sens = f.sensors[sens_def.input_idx];
+
+        // Angles too stale - cannot calculate position anymore.
+        for (int base_station_idx=0; base_station_idx < 2; base_station_idx++)
+        {
+            pos_.fix_level = calculatePosition(base_station_idx, sens, f);
+            if(pos_.fix_level != FixLevel::kPartialVis) {
+                for (int i = 0; i < vec3d_size; i++){
+                    pos_.pos[i] -= sens_def.pos[i];
+                }
+                break;
+            }
+
+        }
+    }
+
+    produce(pos_);
+}
+
+void Point2DGeometryBuilder::do_work(Timestamp cur_time) {
+    // TODO: Make compatible with multiple geometry objects.
+   // set_led_state(pos_.fix_level >= FixLevel::kStaleFix ? LedState::kFixFound : LedState::kNoFix);
+}
+
+bool Point2DGeometryBuilder::debug_cmd(HashedWord *input_words) {
+    /*if (*input_words == "geom#"_hash && input_words->idx == object_idx_) {
+        input_words++;
+        return producer_debug_cmd(this, input_words, "ObjectPosition", object_idx_);
+    }*/
+    return false;
+}
+void Point2DGeometryBuilder::debug_print(PrintStream &stream) {
+    //producer_debug_print(this, stream);
+}
 
 PointGeometryBuilder::PointGeometryBuilder(uint32_t idx, const GeometryBuilderDef &geo_def,
                                            const Vector<BaseStationGeometryDef, num_base_stations> &base_stations )
@@ -103,7 +188,49 @@ float vec_length(vec3d &vec) {
     return res;
 }
 
+void vec_scalar_mul(const vec3d &vec, const float &scalar, const int vec_size, vec3d &res)
+{
+    for (int i=0; i < vec_size; i++){
+        res[i] = vec[i] * scalar;
+    }
+}
+
+void calc_ray_vec(const BaseStationGeometryDef &bs, float angle1, float angle2, vec3d &res, vec3d &origin, Producer<DebugString> *producer) {
+
+
+    vec3d a = {arm_cos_f32(angle1), 0, -arm_sin_f32(angle1)};  // Normal vector to X plane
+    vec3d b = {0, arm_cos_f32(angle2), arm_sin_f32(angle2)};   // Normal vector to Y plane
+
+    vec3d ray = {};
+    vec_cross_product(b, a, ray); // Intersection of two planes -> ray vector.
+    float len = vec_length(ray);
+    arm_scale_f32(ray, 1/len, ray, vec3d_size); // Normalize ray length.
+
+    arm_matrix_instance_f32 source_rotation_matrix = {3, 3, const_cast<float*>(bs.mat)};
+    arm_matrix_instance_f32 ray_vec = {3, 1, ray};
+    arm_matrix_instance_f32 ray_rotated_vec = {3, 1, res};
+    arm_mat_mult_f32(&source_rotation_matrix, &ray_vec, &ray_rotated_vec);
+
+    // TODO: Make geometry adjustments within base station.
+    vec3d rotated_origin_delta = {};
+    //vec3d base_origin_delta = {-0.025f, -0.025f, 0.f};  // Rotors are slightly off center in base station.
+    // arm_matrix_instance_f32 origin_vec = {3, 1, base_origin_delta};
+    // arm_matrix_instance_f32 origin_rotated_vec = {3, 1, rotated_origin_delta};
+    // arm_mat_mult_f32(&source_rotation_matrix, &origin_vec, &origin_rotated_vec);
+    arm_add_f32(const_cast<vec3d&>(bs.origin), rotated_origin_delta, origin, vec3d_size);
+
+    /*
+    DebugString test;
+    for (int i = 0; i < 3; i++)
+        test.data[i] = bs.origin[i*4];
+
+    producer->produce(test);
+    */
+
+}
+
 void calc_ray_vec(const BaseStationGeometryDef &bs, float angle1, float angle2, vec3d &res, vec3d &origin) {
+
     vec3d a = {arm_cos_f32(angle1), 0, -arm_sin_f32(angle1)};  // Normal vector to X plane
     vec3d b = {0, arm_cos_f32(angle2), arm_sin_f32(angle2)};   // Normal vector to Y plane
 
@@ -126,6 +253,34 @@ void calc_ray_vec(const BaseStationGeometryDef &bs, float angle1, float angle2, 
     arm_add_f32(const_cast<vec3d&>(bs.origin), rotated_origin_delta, origin, vec3d_size);
 }
 
+bool intersect_line_with_plane(const vec3d &ray_origin, const vec3d &ray, const vec3d &plane_origin, const vec3d &plane_vec_1, const vec3d &plane_vec_2, vec3d *res) {
+
+        //intersect_line_with_plane(ray_origin, ray, plane_origin, plane_vec_1, plane_vec_2, &pos_.pos, &pos_delta);
+        //
+    vec3d det_cross, la_p0, plane1_cross_plane2, inverse_ray;
+    float det, dividend, divisor;
+    vec_scalar_mul(ray, -1., vec3d_size, inverse_ray);
+    vec_cross_product(plane_vec_1, plane_vec_2, det_cross);
+    arm_dot_prod_f32(const_cast<vec3d&>(inverse_ray), const_cast<vec3d&>(det_cross), vec3d_size, &det);
+
+    if (fabs(det) < 1e-5f)
+        return false;
+
+    vec_cross_product(plane_vec_1, plane_vec_2, plane1_cross_plane2);
+    arm_sub_f32(const_cast<vec3d&>(ray_origin), const_cast<vec3d&>(plane_origin), la_p0, vec3d_size);
+    arm_dot_prod_f32(plane1_cross_plane2, la_p0, vec3d_size, &dividend);
+    arm_dot_prod_f32(inverse_ray, plane1_cross_plane2, vec3d_size, &divisor);
+
+    float t = dividend / divisor;
+    vec3d scaled_ray;
+    vec_scalar_mul(ray, t, vec3d_size, scaled_ray);
+    vec3d tmp;
+    arm_add_f32(const_cast<vec3d&>(ray_origin), const_cast<vec3d&>(scaled_ray), tmp, vec3d_size);
+
+    return true;
+
+
+}
 
 bool intersect_lines(const vec3d &orig1, const vec3d &vec1, const vec3d &orig2, const vec3d &vec2, vec3d *res, float *dist) {
     // Algoritm: http://geomalgorithms.com/a07-_distance.html#Distance-between-Lines
@@ -218,7 +373,7 @@ void CoordinateSystemConverter::debug_print(PrintStream &stream) {
 }
 
 
-// ======= BaseStationGeometryDef I/O ===========================================
+// ======= BaseStationGeometryDef I/O ===========================================Format
 // Format: base<idx> origin <x> <y> <z> matrix <9x floats>
 
 void BaseStationGeometryDef::print_def(uint32_t idx, PrintStream &stream) {

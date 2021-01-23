@@ -14,6 +14,12 @@ public:
     void consume(const MotorCmd&);
     void do_work(Timestamp cur_time);
     void start();
-
+private:
+    void updateMotor();
+    void updateSteeringAngle();
+    float m_motor_speed;
+    float m_steer;
+    int m_current_steer;
+    int m_target_steer;
 };
 

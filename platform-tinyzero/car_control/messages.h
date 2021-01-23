@@ -2,6 +2,6 @@
 
 struct __attribute__((packed)) MotorCmd
 {
-    float motor;
+    float speed;
     float steer;
 };

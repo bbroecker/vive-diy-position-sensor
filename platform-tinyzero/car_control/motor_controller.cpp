@@ -4,12 +4,12 @@
 #define STEER_MARGIN 20
 
 int steer_dir_1 = A3;
-int steer_dir_2 = 8;
+int steer_dir_2 = A0;
 int steer_pw = 5;
 
 int motor_dir_1 = A1;
 int motor_dir_2 = 6;
-int motor_pw = 4;
+int motor_pw = 8;
 
 int steer_pot_pin = A2;
 
@@ -24,9 +24,9 @@ int right_range = right - center;
 MotorController::MotorController()
 {
     m_steer = 0.;
-    m_motor_speed = 0;
+    m_motor_speed = 0.75;
     m_current_steer = center;
-    m_target_steer = center;
+    m_target_steer = left;
 }
 
 
@@ -99,11 +99,11 @@ void MotorController::updateMotor(){
 
 void MotorController::do_work(Timestamp cur_time) {
     m_current_steer = analogRead(steer_pot_pin);
-    SerialUSB.print("current: ");
+/*    SerialUSB.print("current: ");
     SerialUSB.print(m_current_steer);
     SerialUSB.print(" target: ");
     SerialUSB.print(m_target_steer);
-    SerialUSB.print("\n");
+    SerialUSB.print("\n");*/
     updateMotor();
     updateSteeringAngle();
 }

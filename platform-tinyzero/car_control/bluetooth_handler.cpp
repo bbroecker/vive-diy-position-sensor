@@ -61,11 +61,11 @@ void BluetoothCommunication::do_work(Timestamp cur_time) {
     MotorCmd *cmd = (MotorCmd*) (ble_rx_buffer);
     produce(*cmd);
 
-   // SerialMonitorInterface.println(cmd->steer);
+    SerialMonitorInterface.println(cmd->steer);
     //SerialMonitorInterface.println((char*)ble_rx_buffer);
     ble_rx_buffer_len = 0;//clear afer reading
   }
-  if (SerialMonitorInterface.available()) {//Check if serial input is available to send
+  /*if (SerialMonitorInterface.available()) {//Check if serial input is available to send
     delay(10);//should catch input
     uint8_t sendBuffer[21];
     uint8_t sendLength = 0;
@@ -74,17 +74,17 @@ void BluetoothCommunication::do_work(Timestamp cur_time) {
       sendLength++;
     }
     if (SerialMonitorInterface.available()) {
-      SerialMonitorInterface.print(F("Input truncated, dropped: "));
+     // SerialMonitorInterface.print(F("Input truncated, dropped: "));
       if (SerialMonitorInterface.available()) {
-        SerialMonitorInterface.write(SerialMonitorInterface.read());
+       // SerialMonitorInterface.write(SerialMonitorInterface.read());
       }
     }
     sendBuffer[sendLength] = '\0'; //Terminate string
     sendLength++;
     if (!lib_aci_send_data(PIPE_UART_OVER_BTLE_UART_TX_TX, (uint8_t*)sendBuffer, sendLength))
     {
-      SerialMonitorInterface.println(F("TX dropped!"));
+      //SerialMonitorInterface.println(F("TX dropped!"));
     }
-  }
+  }*/
 }
 

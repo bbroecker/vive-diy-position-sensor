@@ -3,6 +3,8 @@
 #include "Arduino.h"
 //#include <memory>
 #include "input_tim.h"
+#include "car_control/bluetooth_communication.h"
+#include "car_control/motor_controller.h"
 #include "primitives/workers.h"
 #include "pulse_processor.h"
 #include "geometry.h"
@@ -64,14 +66,14 @@ void consume(const SensorAnglesFrame& f) {
             //printer.printf("\t");
             if (f.fix_level == FixLevel::kCycleSynced && angles.updated_cycles[j] == f.cycle_idx - f.phase_id + j){
                 //printer.printf("%.4f", angles.angles[j]);
-                SerialUSB.print(angles.angles[j]);
+                SerialUSB.println(angles.angles[j]);
                 //SerialUSB.print(j);
             }
-            SerialUSB.print(" | ");
+            //SerialUSB.print(" | ");
         }
-        SerialUSB.print("\n");
+        //SerialUSB.print("\n");
     }
-    SerialUSB.println("angle");
+    //SerialUSB.println("angle");
 }
 
 };
@@ -119,9 +121,9 @@ void setup() {
     auto consumer = new GeometrySerial();
     auto consumer_angle = new AngleCon();
     auto consumer_debug = new ConsumeDebug();
-    InputDef input_def_1 {3, true, InputType::kTimer, 0};
+    InputDef input_def_1 {9, false, InputType::kTimer, 0}; //PA09 --> Pin3 on Tiny and Pin5 on XIAO
 
-    InputDef input_def_2 {7, true, InputType::kTimer, 1};
+  //  InputDef input_def_2 {10, false, InputType::kTimer, 1};
     pipeline = std::make_unique<Pipeline>();
     //InputDef input_def = {.pin=3, .pulse_polarity=false, .input_type=InputType::kTimer, .initial_cmp_threshold=0};
 
@@ -130,15 +132,15 @@ void setup() {
     //auto pulse_processor = pipeline->add_back(std::make_unique<PulseProcessor2>(2));
 
     auto input_node_1 = std::make_unique<InputTimNode>(0, std::move(input_def_1));
-    input_node_1->start();
+    //input_node_1->start();
 
-    auto input_node_2 = std::make_unique<InputTimNode>(1, std::move(input_def_2));
-    input_node_2->start();
+   // auto input_node_2 = std::make_unique<InputTimNode>(1, std::move(input_def_2));
+    //input_node_2->start();
     auto node = pipeline->add_front(std::move(input_node_1));
     node->pipe(pulse_processor);
 
-    //auto node_2 = pipeline->add_front(std::move(input_node_2));
-    //node_2->pipe(pulse_processor);
+  //  auto node_2 = pipeline->add_front(std::move(input_node_2));
+   // node_2->pipe(pulse_processor);
 
     BaseStationGeometryDef base_def_1 = {.mat = {-0.260703, 0.393942, -0.881387,  -0.079763, 0.901048, 0.426322 , 0.962118, 0.181445, -0.203484}, .origin = {-1.369170, 1.995489, -0.555100}};
     BaseStationGeometryDef base_def_2 = {.mat = {-0.311722, -0.229114, 0.922136, 0.022549, 0.968436, 0.248240, -0.949906, 0.098175, -0.296717}, .origin = {1.672622, 1.944626, -0.599123}};
@@ -154,13 +156,23 @@ void setup() {
     SensorLocalGeometry sensor = {.input_idx=0, .pos = {0, 0, 0}};
     builder_def.sensors.push(sensor);
 
-    auto geo_builder_node = pipeline->add_back(std::make_unique<Point2DGeometryBuilder>(0, builder_def, base_station_defs, 0.6));
-    pulse_processor->Producer<SensorAnglesFrame>::pipe(geo_builder_node);
+    auto geo_builder_node_1 = pipeline->add_back(std::make_unique<Point2DGeometryBuilder>(0, builder_def, base_station_defs, 0.6));
+    //auto geo_builder_node_2 = pipeline->add_back(std::make_unique<Point2DGeometryBuilder>(1, builder_def, base_station_defs, 0.6));
+    pulse_processor->Producer<SensorAnglesFrame>::pipe(geo_builder_node_1);
+    //pulse_processor->Producer<SensorAnglesFrame>::pipe(geo_builder_node_2);
     pulse_processor->Producer<SensorAnglesFrame>::pipe(consumer_angle);
     pulse_processor->Producer<DataFrameBit>::pipe(data_frame_decoder);
-    geo_builder_node->Producer<ObjectPosition>::pipe(consumer);
-    geo_builder_node->Producer<DebugString>::pipe(consumer_debug);
+    geo_builder_node_1->Producer<ObjectPosition>::pipe(consumer);
+    geo_builder_node_1->Producer<DebugString>::pipe(consumer_debug);
+    //geo_builder_node_2->Producer<ObjectPosition>::pipe(consumer);
+    //geo_builder_node_2->Producer<DebugString>::pipe(consumer_debug);
 
+
+  // auto ble_com = pipeline->add_back(std::make_unique<BluetoothCommunication>(1));
+   // auto motor_cnt = pipeline->add_back(std::make_unique<MotorController>());
+    //ble_com->pipe(motor_cnt);
+
+    pipeline->start();
 }
 
 // the loop routine runs over and over again forever:

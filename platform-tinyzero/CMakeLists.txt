@@ -10,8 +10,10 @@ project(tiny_main CXX)
 set(TINY_SOURCE_FILES
         main.cpp
         timestamp.cpp
-
+        car_control/bluetooth_handler.cpp
+        car_control/motor_controller.cpp
         input_tim.cpp
+        UART.h
 )
 
 set(TINY_MOTOR_FILES
@@ -29,7 +31,7 @@ target_link_libraries(tiny_main PRIVATE sensor-core)
 target_link_libraries(tiny_motor PRIVATE sensor-core)
 
 # Arduino.h is included in hello_world.cpp, so link with Arduino core
-target_link_arduino_libraries(tiny_main PRIVATE core SPI)
+target_link_arduino_libraries(tiny_main PRIVATE core SPI STBLE)
 target_link_arduino_libraries(tiny_motor PRIVATE core SPI STBLE)
 
 # This is needed for the generation of HEX binary and uploading it

@@ -18,6 +18,13 @@ elseif (${PLATFORM} MATCHES "Tiny")
     project(vive-diy-position-sensor)
     add_subdirectory(platform-tinyzero)
     add_subdirectory(src)
+elseif (${PLATFORM} MATCHES "Seeduino")
+    set(ARDUINO_BOARD "Seeeduino XIAO [samd.seeed_XIAO_m0]") #
+    set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/libs/Arduino-CMake-Toolchain/Arduino-toolchain.cmake)
+    include("platform-tinyzero/tiny-zero-arm.toolchain.cmake")
+    project(vive-diy-position-sensor)
+    add_subdirectory(platform-tinyzero)
+    add_subdirectory(src)
 
 elseif (${PLATFORM} MATCHES "Host_Test")
     # Need to define project at the top level to be able to call ctest from build directory

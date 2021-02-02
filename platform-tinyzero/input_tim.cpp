@@ -32,8 +32,12 @@ const static TCC_Config tcc_config [] = {
 
 
 const static PinConfig available_congfigs[] = {
-    {7, PORT_PA21, 21, EVSYS_ID_GEN_EIC_EXTINT_5, 5, 0, 5, 2, 3, GCLK_CLKCTRL_ID_EVSYS_2, GCLK_CLKCTRL_ID_EVSYS_3, 0},
-    {3, PORT_PA09, 9, EVSYS_ID_GEN_EIC_EXTINT_9, 9, 1, 1, 0, 1, GCLK_CLKCTRL_ID_EVSYS_0, GCLK_CLKCTRL_ID_EVSYS_1, 1}
+    //{7, PORT_PA21, 21, EVSYS_ID_GEN_EIC_EXTINT_5, 5, 0, 5, 2, 3, GCLK_CLKCTRL_ID_EVSYS_2, GCLK_CLKCTRL_ID_EVSYS_3, 0}, // TINY Pin 7
+    //{3, PORT_PA09, 9, EVSYS_ID_GEN_EIC_EXTINT_9, 9, 1, 1, 0, 1, GCLK_CLKCTRL_ID_EVSYS_0, GCLK_CLKCTRL_ID_EVSYS_1, 1} // Tiny Pin 3
+
+    {10, PORT_PA10, 10, EVSYS_ID_GEN_EIC_EXTINT_10, 10, 1, 2, 2, 3, GCLK_CLKCTRL_ID_EVSYS_2, GCLK_CLKCTRL_ID_EVSYS_3, 0}, //XIAO PIN 4
+    {9, PORT_PA09, 9, EVSYS_ID_GEN_EIC_EXTINT_9, 9, 1, 1, 0, 1, GCLK_CLKCTRL_ID_EVSYS_0, GCLK_CLKCTRL_ID_EVSYS_1, 1}, // XIA PIN 5
+    {21, PORT_PA21, 21, EVSYS_ID_GEN_EIC_EXTINT_5, 5, 0, 5, 2, 3, GCLK_CLKCTRL_ID_EVSYS_2, GCLK_CLKCTRL_ID_EVSYS_3, 0} // TINY Pin 7
 };
 
 static InputTimNode* connecteNodes_[2];
@@ -166,14 +170,14 @@ void InputTimNode::setupClock()
 
     //setup the divisor for the GCLK0 clock source generator
     REG_GCLK_GENDIV = GCLK_GENDIV_DIV((F_CPU / sec) * 1) |                                  //do not divide the input clock (48MHz / 1)
-    //REG_GCLK_GENDIV = GCLK_GENDIV_DIV(0) |                                  //do not divide the input clock (48MHz / 1)
+   // REG_GCLK_GENDIV = GCLK_GENDIV_DIV(0) |                                  //do not divide the input clock (48MHz / 1)
                     GCLK_GENDIV_ID(3);                                    //for GCLK3
 
     //  SYSCTRL->OSC32K.bit.ENABLE = 1;
     //  SYSCTRL->OSC32K.reg = SYSCTRL_OSC32K_STARTUP(0x6u);
     //configure GCLK0 and enable it
     REG_GCLK_GENCTRL =
-    //    GCLK_GENCTRL_IDC |                                   //50/50 duty cycles; optimization when dividing input clock by an odd number
+     //   GCLK_GENCTRL_IDC |                                   //50/50 duty cycles; optimization when dividing input clock by an odd number
     GCLK_GENCTRL_GENEN |                                 //enable the clock generator
     GCLK_GENCTRL_SRC_DFLL48M |                           //set the clock source to 48MHz
     //    GCLK_GENCTRL_SRC_OSC32K |                            //set the clock source to high-accuracy 32KHz clock
@@ -368,7 +372,7 @@ void InputTimNode::setupTimer()
 
     //setup our desired interrupts
     REG_TCC0_INTENSET =
-    // TCC_INTENSET_MC0 |              //enable interrupts when a capture occurs on MC0
+     TCC_INTENSET_MC0 |              //enable interrupts when a capture occurs on MC0 maybe remove ??
     TCC_INTENSET_MC1;               //enable interrupts when a capture occurs on MC1
     //    TCC_INTENSET_MC3 |            //enable interrupts when a capture occurs on MC3
     //    TCC_INTENSET_MC2 |            //enable interrupts when a capture occurs on MC2
@@ -407,7 +411,7 @@ void InputTimNode::setupTimer()
 
 
     REG_TCC1_INTENSET =
-    // TCC_INTENSET_MC0 |              //enable interrupts when a capture occurs on TCC1/MC0
+     TCC_INTENSET_MC0 |              //enable interrupts when a capture occurs on TCC1/MC0 Maybe remove ???
     TCC_INTENSET_MC1;               //enable interrupts when a capture occurs on TCC1/MC1
 
     //connect the interrupt handler for TCC1
@@ -442,10 +446,15 @@ void InputTimNode::irqHandler(uint16_t pulse_start, uint16_t pulse_stop)
         TimeDelta max_long_pulse_len(300, usec);
         if (pulse_len_ts > max_long_pulse_len)
         {
-     //       SerialUSB.println("too long");
+/*            SerialUSB.print("too long ");
+            SerialUSB.print(pulse_len_ts.get_value((TimeUnit)1));
+            SerialUSB.print(" >  ");
+            SerialUSB.print(max_long_pulse_len.get_value((TimeUnit)1));
+            SerialUSB.print("\n ");*/
+
         }else if(pulse_len_ts >= min_long_pulse_len){
 
-      //      SerialUSB.println("long pulse");
+       //     SerialUSB.println("long pulse");
         }else{
        //     SerialUSB.println("short pulse");
         }

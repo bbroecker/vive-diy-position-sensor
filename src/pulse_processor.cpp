@@ -1,6 +1,7 @@
 #include "pulse_processor.h"
 #include "message_logging.h"
 #include <math.h>
+//#include "Arduino.h"
 
 // Pulse classification parameters.
 constexpr TimeDelta min_short_pulse_len(2, usec);
@@ -65,6 +66,14 @@ void PulseProcessor::process_long_pulse(const Pulse &p) {
                 cycle_start_time_ = p.start_time;
                 cycle_idx_ = 0;
                 phase_classifier_.reset();
+                //SerialUSB.println("long pulse in range !!!!!!!!!!!!!1");
+            }else
+            {
+             /*   SerialUSB.print("not in range !!!!!!!!!!!!!: ");
+                SerialUSB.print(time_from_last_long_pulse_.get_value(usec));
+                SerialUSB.print("   ");
+                SerialUSB.print(long_pulse_starts_accepted_range.get_value(usec));
+                SerialUSB.print("\n");*/
             }
         }
     }
@@ -72,6 +81,7 @@ void PulseProcessor::process_long_pulse(const Pulse &p) {
     // Put the pulse into either one of two buckets, or keep it as unclassified.
     bool pulse_classified = false;
     if (cycle_fix_level_ >= kCycleFixCandidate) {
+
         // Put pulse into one of two buckets by start time.
         TimeDelta time_from_cycle_start = p.start_time - cycle_start_time_;
         for (int i = 0; i < num_base_stations; i++) {

@@ -30,7 +30,7 @@ struct FormatterDef {
 
 
 // Abstract base class for formatter nodes. They all get different inputs, but always produce data streams.
-class FormatterNode 
+class FormatterNode
     : public WorkerNode
     , public Producer<DataChunk> {
 public:
@@ -54,7 +54,7 @@ public:
 };
 
 // Base class for geometry formatters.
-class GeometryFormatter 
+class GeometryFormatter
     : public FormatterNode
     , public Consumer<ObjectPosition> {
 public:

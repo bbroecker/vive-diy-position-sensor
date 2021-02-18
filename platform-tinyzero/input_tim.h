@@ -9,12 +9,17 @@ public:
     InputTimNode(uint32_t input_idx, const InputDef &def);
     ~InputTimNode();
 
-
+/*
     void setupClock();
     void connectPortPinsToInterrupt();
     void setupEIC();
     void connectInterruptsToTimer();
     void setupTimer();
+    void setupTimerTCC0();
+    void setupTimerTCC1();
+    void setupTimerTC3();
+    void connectExt4();
+*/
     void irqHandler(uint16_t pulse_start, uint16_t pulse_stop);
 
     virtual void start();

@@ -5,7 +5,7 @@
 #include <assert.h>
 
 // Type T, Capacity C.
-template<typename T, unsigned C> 
+template<typename T, unsigned C>
 class Vector {
     static_assert(C > 0, "Please provide positive capacity");
     static_assert(std::is_trivially_destructible<T>(), "Vector only works on simple types");

@@ -18,6 +18,8 @@ set(SOURCE_FILES
 )
 
 add_library(sensor-core STATIC EXCLUDE_FROM_ALL ${SOURCE_FILES})
+
 target_include_directories(sensor-core PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/libs/mavlink_v2)
 target_link_libraries(sensor-core PRIVATE cmsis)
 target_include_directories(sensor-core PUBLIC ${CMAKE_SOURCE_DIR}/include)
+#target_link_arduino_libraries(sensor-core PRIVATE core SPI STBLE)

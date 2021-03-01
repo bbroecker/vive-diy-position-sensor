@@ -3,8 +3,6 @@
 #include "Arduino.h"
 //#include <memory>
 #include "input_tim.h"
-#include "car_control/bluetooth_communication.h"
-#include "car_control/motor_controller.h"
 #include "primitives/workers.h"
 #include "pulse_processor.h"
 #include "geometry.h"
@@ -151,7 +149,7 @@ void setup() {
     builder_def_1.sensors.push(sensor_1);
     auto geo_builder_node_1 = pipeline->add_back(std::make_unique<Point2DGeometryBuilder>(0, builder_def_1, base_station_defs, 0.6));
     pulse_processor->Producer<SensorAnglesFrame>::pipe(geo_builder_node_1);
-    geo_builder_node_1->Producer<ObjectPosition>::pipe(consumer);
+    geo_builder_node_1->Producer<ObjectPosition>::pipe(i2c_sender);
 
 
 
@@ -164,7 +162,7 @@ void setup() {
     builder_def_2.sensors.push(sensor_2);
     auto geo_builder_node_2 = pipeline->add_back(std::make_unique<Point2DGeometryBuilder>(1, builder_def_2, base_station_defs, 0.6));
     pulse_processor->Producer<SensorAnglesFrame>::pipe(geo_builder_node_2);
-    geo_builder_node_2->Producer<ObjectPosition>::pipe(consumer);
+    geo_builder_node_2->Producer<ObjectPosition>::pipe(i2c_sender);
 
 
     InputDef input_def_3 {11, false, InputType::kTimer, 2};
@@ -175,7 +173,7 @@ void setup() {
     builder_def_3.sensors.push(sensor_3);
     auto geo_builder_node_3 = pipeline->add_back(std::make_unique<Point2DGeometryBuilder>(2, builder_def_3, base_station_defs, 0.6));
     pulse_processor->Producer<SensorAnglesFrame>::pipe(geo_builder_node_3);
-    geo_builder_node_3->Producer<ObjectPosition>::pipe(consumer);
+    geo_builder_node_3->Producer<ObjectPosition>::pipe(i2c_sender);
 
     InputDef input_def_4 {2, false, InputType::kTimer, 3};
     auto input_node_4 = std::make_unique<InputTimNode>(3, std::move(input_def_4));
@@ -185,7 +183,7 @@ void setup() {
     builder_def_4.sensors.push(sensor_4);
     auto geo_builder_node_4 = pipeline->add_back(std::make_unique<Point2DGeometryBuilder>(3, builder_def_4, base_station_defs, 0.6));
     pulse_processor->Producer<SensorAnglesFrame>::pipe(geo_builder_node_4);
-    geo_builder_node_4->Producer<ObjectPosition>::pipe(consumer);
+    geo_builder_node_4->Producer<ObjectPosition>::pipe(i2c_sender);
 
 
     pipeline->start();

@@ -4,6 +4,7 @@
 #include "pulse_processor.h"
 #include "geometry.h"
 #include "data_frame_decoder.h"
+#include "messages.h"
 
 class I2CPoseSender : public Consumer<ObjectPosition>, public WorkerNode {
 
@@ -18,5 +19,8 @@ class I2CPoseSender : public Consumer<ObjectPosition>, public WorkerNode {
     private:
         static I2CPoseSender* senderSingleton;
         int i2c_address_;
+        bool pose_valid_;
+        Pose2D last_pose_;
+
 };
 

@@ -95,3 +95,12 @@ struct OutputCommand {
     OutputCommandType type;
     uint32_t stream_idx;
 };
+
+struct __attribute__((packed)) Pose2D
+{
+    float x;
+    float y;
+    float yaw;
+    bool valid;
+};
+

@@ -6,7 +6,7 @@ set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)
 set(CMAKE_CROSSCOMPILING 1)
 
-set(TOOLCHAIN_TRIPLE "arm-none-eabi-" CACHE STRING "Triple prefix for arm crosscompiling tools")
+# set(TOOLCHAIN_TRIPLE "arm-none-eabi-" CACHE STRING "Triple prefix for arm crosscompiling tools")
 #if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
 #    set(TOOLCHAIN_SUFFIX ".exe" CACHE STRING "Toolchain executable file extension")
 #else()
